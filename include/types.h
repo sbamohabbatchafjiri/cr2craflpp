@@ -70,6 +70,8 @@ typedef uint128_t         u128;
 #define FS_OPT_GET_MAPSIZE(x) (((x & 0x00fffffe) >> 1) + 1)
 #define FS_OPT_SET_MAPSIZE(x) \
   (x <= 1 || x > FS_OPT_MAX_MAPSIZE ? 0 : ((x - 1) << 1))
+#define G(x) ((x) & ((x) >> 4))  // Non-linear function using AND with a shifted version of itself
+#define F(x) ((x) & ((x) >> 8))  // Non-linear function using AND with a shifted version of itself
 
 typedef unsigned long long u64;
 
@@ -103,22 +105,30 @@ typedef int128_t s128;
 
 #endif                                                              /* !MIN */
 
-#define SWAP16(_x)                    \
+
+
+#define SWAP16(_x)            \
   ({                                  \
-                                      \
-    u16 _ret = (_x);                  \
-    (u16)((_ret << 8) | (_ret >> 8)); \
-                                      \
+    u8 _left = (_x) >> 8;             \
+    u8 _right = (_x) & 0xFF;          \
+    u8 _newLeft = _right;             \
+    u8 _newRight = _left ^ G(_right); \
+    (u16)((_newLeft << 8) | _newRight); \
   })
 
-#define SWAP32(_x)                                                   \
-  ({                                                                 \
-                                                                     \
-    u32 _ret = (_x);                                                 \
-    (u32)((_ret << 24) | (_ret >> 24) | ((_ret << 8) & 0x00FF0000) | \
-          ((_ret >> 8) & 0x0000FF00));                               \
-                                                                     \
+#define SWAP32(_x)            \
+  ({                                  \
+    u8 _left1 = (_x) >> 24;           \
+    u8 _left2 = ((_x) >> 16) & 0xFF;  \
+    u8 _right1 = ((_x) >> 8) & 0xFF;  \
+    u8 _right2 = (_x) & 0xFF;         \
+    u8 _newLeft1 = _right2;           \
+    u8 _newLeft2 = _right1;           \
+    u8 _newRight1 = _left2 ^ F(_right2); \
+    u8 _newRight2 = _left1 ^ F(_right1); \
+    (u32)((_newLeft1 << 24) | (_newLeft2 << 16) | (_newRight1 << 8) | _newRight2); \
   })
+
 
 #define SWAP64(_x)                                                             \
   ({                                                                           \
@@ -201,4 +211,3 @@ typedef int128_t s128;
 #endif
 
 #endif                                                   /* ! _HAVE_TYPES_H */
-
